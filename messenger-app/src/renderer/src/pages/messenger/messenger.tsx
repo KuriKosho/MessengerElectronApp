@@ -4,8 +4,22 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { VideoCallModal } from '@renderer/components/VideoCallModal'
 import { VoiceCallModal } from '@renderer/components/VoiceCallModal'
-import { MessageCircle, MoreVertical, Paperclip, Phone, Search, Send, Video, X } from 'lucide-react'
+import { AppDispatch } from '@renderer/stores/store'
+import { logout } from '@renderer/stores/userSlice'
+import {
+  LogOut,
+  MessageCircle,
+  MoreVertical,
+  Paperclip,
+  Phone,
+  Search,
+  Send,
+  Settings,
+  Video,
+  X
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useDispatch } from 'react-redux'
 
 interface User {
   id: string
@@ -32,6 +46,8 @@ interface Message {
 }
 
 export default function Messenger() {
+  const dispatch = useDispatch<AppDispatch>()
+  // const socketService = new SocketService(dispatch)
   const [activeChat, setActiveChat] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
@@ -127,7 +143,6 @@ export default function Messenger() {
           type: attachment.type
         }
       }
-
       setMessages((prevMessages) => ({
         ...prevMessages,
         [activeChat]: [...(prevMessages[activeChat] || []), newMsg]
@@ -168,8 +183,46 @@ export default function Messenger() {
   const handleVoiceCall = () => {
     setIsVoiceCallOpen(true)
   }
+  const handleLogout = () => {
+    dispatch(logout())
+  }
   return (
     <div className="flex h-full w-full mx-auto border rounded-lg overflow-hidden">
+      {/* Sidebar for logged in users */}
+      <div className="w-15 border-r bg-muted/10 flex flex-col justify-between">
+        {/* User profile */}
+        <div className="p-4 border-b">
+          <div className="flex items-center justify-center">
+            <Avatar className="h-10 w-10 bg-slate-300">
+              <AvatarImage src="/placeholder.svg?height=48&width=48" alt="User" />
+              <AvatarFallback>U</AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
+
+        {/* Action buttons at bottom */}
+        <div className="mt-auto">
+          <div className="p-4 flex flex-col gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-full hover:bg-slate-200"
+              aria-label="Settings"
+            >
+              <Settings className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-full hover:bg-slate-200 text-red-500 hover:text-red-600"
+              aria-label="Logout"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
       {/* Sidebar */}
       <div className="w-80 border-r bg-muted/10">
         <div className="p-4 border-b">

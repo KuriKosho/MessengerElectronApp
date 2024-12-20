@@ -64,7 +64,7 @@ export default function RegisterForm() {
           required
         />
       </div>
-      <Button type="submit" className="w-full">
+      <Button type="submit" className="w-full bg-blue-500 text-white">
         Register
       </Button>
     </form>
