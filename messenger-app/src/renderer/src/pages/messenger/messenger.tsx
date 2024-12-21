@@ -2,10 +2,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { toast } from '@renderer/components/ui/use-toast'
 import { VideoCallModal } from '@renderer/components/VideoCallModal'
-import { VoiceCallModal } from '@renderer/components/VoiceCallModal'
-import { AppDispatch } from '@renderer/stores/store'
-import { logout } from '@renderer/stores/userSlice'
+import authService from '@renderer/services/authService'
+import listUsersService from '@renderer/services/listUsersService'
+import messageService from '@renderer/services/messageService'
+import { SignalingService } from '@renderer/services/signalingService'
+import { connectWebSocket, disconnectWebSocket, sendMessage } from '@renderer/services/Socket'
+import { User } from '@renderer/stores/listUsersSlice'
+import { AppDispatch, RootState } from '@renderer/stores/store'
+import { calculateTimeAgo } from '@renderer/utils'
 import {
   LogOut,
   MessageCircle,
@@ -19,16 +25,7 @@ import {
   X
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useDispatch } from 'react-redux'
-
-interface User {
-  id: string
-  name: string
-  avatar: string
-  lastMessage?: string
-  timestamp: string
-  online?: boolean
-}
+import { useDispatch, useSelector } from 'react-redux'
 
 interface Attachment {
   name: string
@@ -47,75 +44,71 @@ interface Message {
 
 export default function Messenger() {
   const dispatch = useDispatch<AppDispatch>()
-  // const socketService = new SocketService(dispatch)
+  const currentUser = useSelector((state: RootState) => state.user.currentUser)
+  const users: User[] = useSelector((state: RootState) => state.listUsers.users)
   const [activeChat, setActiveChat] = useState<string | null>(null)
+  const [activeChatUser, setActiveChatUser] = useState<User | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
-  const [messages, setMessages] = useState<Record<string, Message[]>>({
-    '1': [
-      { id: '1', userId: '1', content: 'Hey, how are you?', timestamp: '10:00 AM' },
-      {
-        id: '2',
-        userId: 'me',
-        content: "I'm good, thanks! How about you?",
-        timestamp: '10:01 AM',
-        isMe: true
-      },
-      { id: '3', userId: '1', content: 'Doing well! See you tomorrow!', timestamp: '10:02 AM' }
-    ],
-    '2': [
-      { id: '1', userId: '2', content: 'Can you help me with something?', timestamp: '9:30 AM' },
-      {
-        id: '2',
-        userId: 'me',
-        content: 'Sure, what do you need?',
-        timestamp: '9:31 AM',
-        isMe: true
-      },
-      { id: '3', userId: '2', content: 'Thanks for the help', timestamp: '9:32 AM' }
-    ]
-  })
+  const [listUsers, setListUsers] = useState<User[]>([])
+  const [messages, setMessages] = useState<Record<string, Message[]>>({})
   const [newMessage, setNewMessage] = useState('')
   const [attachment, setAttachment] = useState<File | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false)
   const [isVoiceCallOpen, setIsVoiceCallOpen] = useState(false)
-  const users: User[] = [
-    {
-      id: '1',
-      name: 'Alex Johnson',
-      avatar: '/placeholder.svg?height=40&width=40',
-      lastMessage: 'See you tomorrow!',
-      timestamp: '2m ago',
-      online: true
-    },
-    {
-      id: '2',
-      name: 'Sarah Wilson',
-      avatar: '/placeholder.svg?height=40&width=40',
-      lastMessage: 'Thanks for the help',
-      timestamp: '1h ago',
-      online: true
-    },
-    {
-      id: '3',
-      name: 'Mike Brown',
-      avatar: '/placeholder.svg?height=40&width=40',
-      lastMessage: 'Great idea!',
-      timestamp: '2h ago'
-    }
-  ]
 
   useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        console.log('users', currentUser?.id)
+        const users = await listUsersService.listUsers(dispatch, currentUser?.id || '')
+        if (users) {
+          // Filter out the current user from the list
+          const filteredUsers = users.filter((user) => user.id !== currentUser?.id)
+          setListUsers(filteredUsers)
+        }
+      } catch (error) {
+        console.error('Failed to fetch users:', error)
+      }
+    }
+    const handleMessage = (message) => {
+      if (message.senderId && message.content) {
+        const newMsg: Message = {
+          id: message.id,
+          userId: message.senderId,
+          content: message.content,
+          timestamp: new Date().toLocaleTimeString(),
+          isMe: message.senderId === currentUser?.id
+        }
+
+        setMessages((prev) => {
+          const chatId =
+            message.senderId === currentUser?.id ? message.receiverId : message.senderId
+          return {
+            ...prev,
+            [chatId]: [...(prev[chatId] || []), newMsg]
+          }
+        })
+      }
+    }
+
+    connectWebSocket(handleMessage, currentUser?.id)
+    fetchUsers()
+    return () => {
+      disconnectWebSocket()
+    }
+  }, [currentUser])
+  useEffect(() => {
     const lowercasedQuery = searchQuery.toLowerCase()
-    const filtered = users.filter(
+    const filtered = listUsers?.filter(
       (user) =>
-        user.name.toLowerCase().includes(lowercasedQuery) ||
+        user.username.toLowerCase().includes(lowercasedQuery) ||
         user.lastMessage?.toLowerCase().includes(lowercasedQuery)
     )
     setFilteredUsers(filtered)
-  }, [searchQuery])
+  }, [searchQuery, listUsers])
 
   useEffect(() => {
     scrollToBottom()
@@ -150,14 +143,17 @@ export default function Messenger() {
       setNewMessage('')
       setAttachment(null)
       updateLastMessage(activeChat, newMessage.trim() || 'Sent an attachment')
+      if (currentUser?.id) {
+        sendMessage(currentUser.id, activeChat, newMessage.trim() || 'Sent an attachment')
+      }
     }
   }
 
   const updateLastMessage = (userId: string, content: string) => {
-    const updatedUsers = users.map((user) =>
+    const updatedUsers = listUsers.map((user) =>
       user.id === userId ? { ...user, lastMessage: content, timestamp: 'Just now' } : user
     )
-    setFilteredUsers(updatedUsers)
+    setListUsers(updatedUsers)
   }
 
   const scrollToBottom = () => {
@@ -183,8 +179,58 @@ export default function Messenger() {
   const handleVoiceCall = () => {
     setIsVoiceCallOpen(true)
   }
-  const handleLogout = () => {
-    dispatch(logout())
+  const handleLogout = async () => {
+    try {
+      console.log('currentUser', currentUser)
+      await authService.logout(currentUser?.email || 'no email', dispatch)
+      toast({
+        variant: 'default',
+        title: 'Logout Success',
+        description: 'You are now logged out'
+      })
+    } catch (error) {
+      console.error('Logout failed:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Logout Failed',
+        description: 'An error occurred during logout'
+      })
+    }
+  }
+  const setActiveChatId = async (userId: string) => {
+    try {
+      const messages = await messageService.getChatMessages(currentUser?.id || '', userId)
+      // setMessages((prev) => ({
+      //   ...prev,
+      //   [userId]: messages
+      // }))
+      // Set isMe to true for the messages
+      const updatedMessages = messages.map((message) => ({
+        ...message,
+        isMe: message.senderId === currentUser?.id
+      }))
+      // Format timestamp
+      const formattedMessages = updatedMessages.map((message) => ({
+        ...message,
+        timestamp: new Date(message.timestamp).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      }))
+      setMessages((prev) => ({
+        ...prev,
+        [userId]: formattedMessages
+      }))
+    } catch (error) {
+      console.error('Failed to fetch chat messages:', error)
+    }
+    setActiveChat(userId)
+    console.log('userId', userId)
+    // Initialize empty message array if it doesn't exist
+    setMessages((prev) => ({
+      ...prev,
+      [userId]: prev[userId] || []
+    }))
   }
   return (
     <div className="flex h-full w-full mx-auto border rounded-lg overflow-hidden">
@@ -195,7 +241,7 @@ export default function Messenger() {
           <div className="flex items-center justify-center">
             <Avatar className="h-10 w-10 bg-slate-300">
               <AvatarImage src="/placeholder.svg?height=48&width=48" alt="User" />
-              <AvatarFallback>U</AvatarFallback>
+              <AvatarFallback>{currentUser?.username[0].toUpperCase()}</AvatarFallback>
             </Avatar>
           </div>
         </div>
@@ -240,15 +286,15 @@ export default function Messenger() {
           {filteredUsers.map((user) => (
             <button
               key={user.id}
-              onClick={() => setActiveChat(user.id)}
+              onClick={() => setActiveChatId(user.id)}
               className={`w-full flex items-center gap-3 p-3 hover:bg-slate-100 transition-colors ${
                 activeChat === user.id ? 'bg-slate-100' : ''
               }`}
             >
               <div className="relative">
                 <Avatar className="bg-slate-300">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback>{user.name[0]}</AvatarFallback>
+                  <AvatarImage src={user.avatar} alt={user.username} />
+                  <AvatarFallback>{user.username[0]}</AvatarFallback>
                 </Avatar>
                 {user.online && (
                   <span className="absolute bottom-0 right-0 w-3 h-3 border-2 border-background bg-green-500 rounded-full" />
@@ -256,8 +302,10 @@ export default function Messenger() {
               </div>
               <div className="flex-1 text-left">
                 <div className="flex justify-between">
-                  <span className="font-medium">{user.name}</span>
-                  <span className="text-xs text-muted-foreground">{user.timestamp}</span>
+                  <span className="font-medium">{user.username}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {calculateTimeAgo(user.timeStamp || '')}
+                  </span>
                 </div>
                 {user.lastMessage && (
                   <p className="text-sm text-muted-foreground truncate">{user.lastMessage}</p>
@@ -275,14 +323,20 @@ export default function Messenger() {
             <div className="flex items-center gap-3">
               <Avatar className="bg-slate-300">
                 <AvatarImage
-                  src={users.find((u) => u.id === activeChat)?.avatar}
-                  alt={users.find((u) => u.id === activeChat)?.name}
+                  src={listUsers.find((u) => u.id === activeChat)?.avatar}
+                  alt={listUsers.find((u) => u.id === activeChat)?.username}
                 />
-                <AvatarFallback>{users.find((u) => u.id === activeChat)?.name[0]}</AvatarFallback>
+                <AvatarFallback>
+                  {listUsers.find((u) => u.id === activeChat)?.username[0]}
+                </AvatarFallback>
               </Avatar>
               <div>
-                <div className="font-medium">{users.find((u) => u.id === activeChat)?.name}</div>
-                <div className="text-xs text-slate-500">Active now</div>
+                <div className="font-medium">
+                  {listUsers.find((u) => u.id === activeChat)?.username}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {listUsers.find((u) => u.id === activeChat)?.online ? 'Active now' : 'Offline'}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -303,35 +357,35 @@ export default function Messenger() {
               {messages[activeChat]?.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.isMe ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${message?.isMe ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
                     className={`max-w-[70%] rounded-2xl px-4 py-2 ${
                       message.isMe ? 'bg-slate-700 text-white' : 'bg-slate-100'
                     }`}
                   >
-                    <p>{message.content}</p>
-                    {message.attachment && (
+                    <p>{message?.content}</p>
+                    {message?.attachment && (
                       <div className="mt-2">
-                        {message.attachment.type.startsWith('image/') ? (
+                        {message?.attachment?.type?.startsWith('image/') ? (
                           <img
-                            src={message.attachment.url}
-                            alt={message.attachment.name}
+                            src={message?.attachment?.url}
+                            alt={message?.attachment?.name}
                             className="max-w-full rounded"
                           />
                         ) : (
                           <a
-                            href={message.attachment.url}
+                            href={message?.attachment?.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-500 underline"
                           >
-                            {message.attachment.name}
+                            {message?.attachment?.name}
                           </a>
                         )}
                       </div>
                     )}
-                    <span className="text-xs opacity-70">{message.timestamp}</span>
+                    <span className="text-xs opacity-70">{message?.timestamp}</span>
                   </div>
                 </div>
               ))}
@@ -357,13 +411,6 @@ export default function Messenger() {
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Type a message..."
-                  className="flex-1"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  aria-label="Type a message"
-                />
                 <input
                   type="file"
                   className="hidden"
@@ -380,6 +427,14 @@ export default function Messenger() {
                 >
                   <Paperclip className="h-4 w-4" />
                 </Button>
+                <Input
+                  placeholder="Type a message..."
+                  className="flex-1"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  aria-label="Type a message"
+                />
+
                 <Button
                   type="submit"
                   size="icon"
@@ -406,18 +461,22 @@ export default function Messenger() {
             isOpen={isVideoCallOpen}
             onClose={() => setIsVideoCallOpen(false)}
             callee={{
-              name: users.find((u) => u.id === activeChat)?.name || '',
-              avatar: users.find((u) => u.id === activeChat)?.avatar || ''
+              name: listUsers.find((u) => u.id === activeChat)?.username || '',
+              avatar: listUsers.find((u) => u.id === activeChat)?.avatar || ''
             }}
+            signalingService={SignalingService}
+            receiverId={activeChat}
           />
-          <VoiceCallModal
+          {/* <VoiceCallModal
             isOpen={isVoiceCallOpen}
             onClose={() => setIsVoiceCallOpen(false)}
             callee={{
-              name: users.find((u) => u.id === activeChat)?.name || '',
-              avatar: users.find((u) => u.id === activeChat)?.avatar || ''
+              name: listUsers.find((u) => u.id === activeChat)?.username || '',
+              avatar: listUsers.find((u) => u.id === activeChat)?.avatar || ''
             }}
-          />
+            signalingService={SignalingService}
+            receiverId={activeChat}
+          /> */}
         </>
       )}
     </div>

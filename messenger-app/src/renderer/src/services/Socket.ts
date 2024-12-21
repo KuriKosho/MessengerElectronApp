@@ -1,73 +1,73 @@
-import { io, Socket } from 'socket.io-client'
+import { Client } from '@stomp/stompjs'
+import SockJS from 'sockjs-client/dist/sockjs'
+// import messageService from './messageService'
 
-let socket: Socket | null = null
-let socketId: string | null = null
-const API_URL = 'http://localhost:3003'
-export const connectWithSocketIOServer = (): void => {
-  socket = io(API_URL)
+const WEBSOCKET_URL = 'http://localhost:8080/ws'
+let client: Client
 
-  const eventHandlers: { event: string; handler: (...args) => void }[] = [
-    { event: 'connect', handler: handleConnect },
-    { event: 'online-users', handler: handleOnlineUsers },
-    { event: 'chat-message', handler: handleChatMessage },
-    { event: 'chat-rooms', handler: handleChatRooms },
-    { event: 'user-disconnected', handler: handleUserDisconnect },
-    { event: 'file-message', handler: handleFileMessage },
-    { event: 'login-response', handler: handleLoginResponse }
-  ]
+export const connectWebSocket = (onMessageReceived: (message) => void, user_id?: string) => {
+  if (!user_id) {
+    console.error('user_id is required')
+    return
+  }
 
-  eventHandlers.forEach(({ event, handler }) => {
-    socket?.on(event, handler)
+  client = new Client({
+    webSocketFactory: () => new SockJS(WEBSOCKET_URL),
+    reconnectDelay: 5000,
+    debug: (str) => console.log('[STOMP Debug]: ', str),
+    connectHeaders: {
+      user_id
+    }
   })
+
+  client.onConnect = () => {
+    console.log('Connected to WebSocket')
+
+    // Subscribe to private messages
+    client.subscribe(`/user/${user_id}/queue/messages`, (message) => {
+      if (message.body) {
+        const chatMessage = JSON.parse(message.body)
+        console.log('chatMessage', chatMessage)
+        onMessageReceived(chatMessage)
+      }
+    })
+
+    // Subscribe to public chat room
+    client.subscribe('/topic/public', (message) => {
+      if (message.body) {
+        const chatMessage = JSON.parse(message.body)
+        onMessageReceived(chatMessage)
+      }
+    })
+  }
+
+  client.activate()
 }
 
-const handleConnect = (): void => {
-  console.log('Connected to socket server')
-  socketId = socket?.id || null
+export const sendMessage = async (senderId: string, receiverId: string, content: string) => {
+  if (!senderId || !client?.connected) {
+    console.error('Sender ID and connection are required')
+    return
+  }
+
+  const message = {
+    senderId,
+    receiverId,
+    content,
+    timestamp: new Date().toISOString()
+  }
+
+  client.publish({
+    destination: '/app/chat',
+    body: JSON.stringify(message)
+  })
+
+  // Also save to backend
+  // await messageService.sendMessage(senderId, receiverId, content)
 }
 
-const handleOnlineUsers = (usersData): void => {
-  console.log('Online users:', usersData)
-}
-const handleChatMessage = (data): void => {
-  console.log('Chat message received:', data)
-  // chatMessageHandler(data);
-}
-
-const handleChatRooms = (chatRooms): void => {
-  console.log('Chat rooms:', chatRooms)
-  // chatRoomsListHandler(chatRooms);
-}
-
-const handleFileMessage = (data): void => {
-  console.log('File message received:', data)
-  // chatMessageHandler(data);
-}
-
-const handleUserDisconnect = (): void => {
-  console.log('User disconnected')
-  // userDisconnectedHandler();
-}
-
-const handleLoginResponse = (response): void => {
-  console.log('Login response:', response)
-  if (response.success) {
-    console.log('Login successful')
-  } else {
-    console.error('Login failed:', response.message)
+export const disconnectWebSocket = () => {
+  if (client?.connected) {
+    client.deactivate()
   }
 }
-
-export const getSocketId = (): string | null => socketId
-
-const emitEvent = (event: string, data): void => {
-  socket?.emit(event, data)
-}
-
-export const login = (data): void => {
-  emitEvent('user-login', data)
-}
-
-export const sendChatMessage = (data): void => emitEvent('chat-message', data)
-export const sendFileMessage = (data): void => emitEvent('file-message', data)
-export const createChatRoom = (data): void => emitEvent('chat-room-create', data)
