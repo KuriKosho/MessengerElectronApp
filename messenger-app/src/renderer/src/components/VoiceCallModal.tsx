@@ -11,13 +11,16 @@ interface VoiceCallModalProps {
     name: string
     avatar: string
   }
+  handleSignal: (signal) => void
 }
 
-export function VoiceCallModal({ isOpen, onClose, callee }: VoiceCallModalProps) {
+export function VoiceCallModal({ isOpen, onClose, callee, handleSignal }: VoiceCallModalProps) {
   const [isMuted, setIsMuted] = useState(false)
   const [callDuration, setCallDuration] = useState(0)
 
   useEffect(() => {
+    handleSignal('call')
+
     let interval: NodeJS.Timeout
     if (isOpen) {
       interval = setInterval(() => {

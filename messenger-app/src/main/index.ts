@@ -1,7 +1,6 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'path'
-import icon from '../../resources/icon.png?asset'
 
 function createWindow(): void {
   // Show
@@ -10,11 +9,10 @@ function createWindow(): void {
     width: 900,
     height: 670,
     show: false,
-    autoHideMenuBar: false,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    autoHideMenuBar: true,
     center: true,
     title: 'Messenger App',
-    frame: false,
+    frame: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
