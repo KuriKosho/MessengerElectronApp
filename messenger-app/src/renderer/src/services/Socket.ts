@@ -81,17 +81,24 @@
 //     console.error('STOMP client is not connected')
 //   }
 // }
+import { WEBSOCKET_URL } from '@renderer/utils'
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client/dist/sockjs'
 
-const WEBSOCKET_URL = 'http://localhost:8080/ws'
 let client: Client
 
 // Kết nối WebSocket
 export const connectWebSocket = (
   onMessageReceived: (message) => void,
   userId: string,
-  onSignalReceived: (signal) => void
+  onSignalReceived: (signal) => void,
+  onCallReceived: (call) => void,
+  onCallOffer: (offer) => void,
+  onCallAnswer: (answer) => void,
+  onCallCandidate: (candidate) => void,
+  onCallEnd: (end) => void,
+  onCallReject: (reject) => void,
+  onCallAccept: (accept) => void
 ) => {
   if (!userId) {
     console.error('user_id is required')
@@ -127,11 +134,109 @@ export const connectWebSocket = (
         onSignalReceived(signal)
       }
     })
+    // ---------------VIDEO CALL---------------------
+    client.subscribe('/topic/testServer', (message) => {
+      console.log('Message from signaling server:', message)
+    })
+    // ------------------CALL------------------
+    client.subscribe(`/user/${userId}/topic/call`, (call) => {
+      console.log('Call from signaling server:', call)
+      onCallReceived(call)
+    })
+    // ------------------CALL OFFER------------------
+    client.subscribe(`/user/${userId}/topic/offer`, (offer) => {
+      console.log('Offer from signaling server:', offer)
+      onCallOffer(offer)
+    })
+    // ------------------CALL ANSWER------------------
+    client.subscribe(`/user/${userId}/topic/answer`, (answer) => {
+      console.log('Answer from signaling server:', answer)
+      onCallAnswer(answer)
+    })
+    // ------------------CALL CANDIDATE------------------
+    client.subscribe(`/user/${userId}/topic/candidate`, (candidate) => {
+      console.log('Candidate from signaling server:', candidate)
+      onCallCandidate(candidate)
+    })
+    // ------------------CALL END------------------
+    client.subscribe(`/user/${userId}/topic/end`, (end) => {
+      console.log('Call ended', end)
+      onCallEnd(end)
+    })
+    // ------------------CALL REJECT------------------
+    client.subscribe(`/user/${userId}/topic/reject`, (reject) => {
+      console.log('Call rejected', reject)
+      onCallReject(reject)
+    })
+    // ------------------CALL ACCEPT------------------
+    client.subscribe(`/user/${userId}/topic/accept`, (accept) => {
+      console.log('Call accepted', accept)
+      onCallAccept(accept)
+    })
+
+    // Send
+    // Send
+    client.publish({
+      destination: '/app/addUser',
+      body: userId
+    })
   }
 
   client.activate()
 }
-
+// Video call send action
+export const sendVideoCall = (senderId: string, receiverId: string) => {
+  client.publish({
+    destination: '/app/call',
+    body: JSON.stringify({ callFrom: senderId, callTo: receiverId })
+  })
+}
+// Video call end action
+export const sendVideoCallEnd = (senderId: string, receiverId: string) => {
+  client.publish({
+    destination: '/app/end',
+    body: JSON.stringify({ fromUser: senderId, toUser: receiverId })
+  })
+}
+// Video call reject action
+export const sendVideoCallReject = (senderId: string, receiverId: string) => {
+  client.publish({
+    destination: '/app/reject',
+    body: JSON.stringify({ fromUser: senderId, toUser: receiverId })
+  })
+}
+// Video call accept action
+export const sendVideoCallAccept = (senderId: string, receiverId: string) => {
+  client.publish({
+    destination: '/app/call/accept',
+    body: JSON.stringify({ fromUser: senderId, toUser: receiverId })
+  })
+}
+// Send candidate
+export const sendCandidate = (fromUser: string, toUser: string, candidate) => {
+  client.publish({
+    destination: '/app/candidate',
+    body: JSON.stringify({
+      fromUser: fromUser,
+      toUser: toUser,
+      candidate: candidate
+    })
+  })
+}
+// Send offer
+export const sendOffer = (fromUser: string, toUser: string, offer) => {
+  client.publish({
+    destination: '/app/offer',
+    body: JSON.stringify({ fromUser: fromUser, toUser: toUser, offer: offer })
+  })
+}
+// Send answer
+export const sendAnswer = (fromUser: string, toUser: string, answer) => {
+  client.publish({
+    destination: '/app/answer',
+    body: JSON.stringify({ fromUser: fromUser, toUser: toUser, answer: answer })
+  })
+}
 // Gửi thông báo signaling (offer/answer/candidate)
 export const sendSignal = (
   name: string,

@@ -27,6 +27,7 @@
     "@stomp/stompjs": "^7.0.0",
     "@types/simple-peer": "^9.11.8",
     "@types/sockjs-client": "^1.5.4",
+    "@zegocloud/zego-uikit-prebuilt": "^2.14.0",
     "axios": "^1.7.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -40,6 +41,7 @@
     "sockjs-client": "^1.6.1",
     "tailwind-merge": "^2.5.5",
     "uuid": "^10.0.0",
+    "zego-express-engine-electron": "^3.18.1-42151.1137",
     "zustand": "^5.0.2"
   },
   "devDependencies": {

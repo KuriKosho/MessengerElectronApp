@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { IncomingCallModal } from '@renderer/components/incoming-call-modal'
+import RoomJoinModal from '@renderer/components/RoomJoinModal'
 import { toast } from '@renderer/components/ui/use-toast'
 import { VideoCallModal } from '@renderer/components/VideoCallModal'
 import authService from '@renderer/services/authService'
@@ -11,8 +12,13 @@ import messageService from '@renderer/services/messageService'
 import {
   connectWebSocket,
   disconnectWebSocket,
+  sendAnswer,
+  sendCandidate,
   sendMessage,
-  sendSignal
+  sendVideoCall,
+  sendVideoCallAccept,
+  sendVideoCallEnd,
+  sendVideoCallReject
 } from '@renderer/services/Socket'
 import { User } from '@renderer/stores/listUsersSlice'
 import { AppDispatch, RootState } from '@renderer/stores/store'
@@ -27,6 +33,7 @@ import {
   Send,
   Settings,
   Video,
+  VideoIcon,
   X
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -65,104 +72,216 @@ export default function Messenger() {
   const [isVoiceCallOpen, setIsVoiceCallOpen] = useState(false)
   const [isIncomingCallOpen, setIsIncomingCallOpen] = useState(false)
   const [callerName, setCallerName] = useState('Người lạ')
+  const [isGroupCallOpen, setIsGroupCallOpen] = useState(false)
+  const [roomId, setRoomId] = useState('')
+  const onCreateRoom = () => {}
+  const onJoinRoom = () => {}
   // Video call
-  const rtcConfiguration = {
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  const iceServers = useRef<RTCIceServer[]>([
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun.l.google.com:5349' },
+    { urls: 'stun:stun1.l.google.com:3478' },
+    { urls: 'stun:stun1.l.google.com:5349' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:5349' },
+    { urls: 'stun:stun3.l.google.com:3478' },
+    { urls: 'stun:stun3.l.google.com:5349' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:5349' },
+    { urls: 'stun:stun5.l.google.com:19302' },
+    { urls: 'stun:stun5.l.google.com:5349' }
+  ])
+  // const localVideoRef = useRef<HTMLVideoElement>(null)
+  // const remoteVideoRef = useRef<HTMLVideoElement>(null)
+
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
+  // const [localPeer, setLocalPeer] = useState<RTCPeerConnection | null>(null)
+  const localPeer = useRef<RTCPeerConnection | null>(null)
+  const remotePeer = useRef<RTCPeerConnection | null>(null)
+  // const [remotePeer, setRemotePeer] = useState<RTCPeerConnection | null>(null)
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
+  const [isFullScreen, setIsFullScreen] = useState(true)
+  const [isMuted, setIsMuted] = useState(false)
+  const [isVideoOff, setIsVideoOff] = useState(false)
+  const [isCallAccepted, setIsCallAccepted] = useState(false)
+  // ================================
+  // Step 1: Create local peer connection
+  const createPeerConnection = async () => {
+    try {
+      // const peer = new RTCPeerConnection({ iceServers: iceServers.current })
+      // localPeer.current = peer
+      localPeer.current = new RTCPeerConnection({ iceServers: iceServers.current })
+      console.log('localPeer.current', localPeer.current)
+    } catch (error) {
+      console.error('Error creating local peer connection:', error)
+    }
   }
-  const localVideoRef = useRef<HTMLVideoElement | null>(null)
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null)
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
-  const localStreamRef = useRef<MediaStream | null>(null)
-  // Handle message from server
-
-  const createOffer = async () => {
-    if (!peerConnectionRef.current || !localStreamRef.current) return
-
-    const offer = await peerConnectionRef.current.createOffer()
-    await peerConnectionRef.current.setLocalDescription(offer)
-
-    sendSignal(currentUser?.username || '', currentUser?.id || '', activeChat || '', 'offer', {
-      type: 'offer',
-      sdp: offer.sdp
-    })
-  }
-  const createAnswer = async () => {
-    if (!peerConnectionRef.current) return
-
-    const answer = await peerConnectionRef.current.createAnswer()
-    await peerConnectionRef.current.setLocalDescription(answer)
-
-    sendSignal(currentUser?.username || '', currentUser?.id || '', activeChat || '', 'answer', {
-      type: 'answer',
-      sdp: answer.sdp
-    })
-  }
+  // Step 2: Initialize local stream
   const initializeLocalVideo = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      localStreamRef.current = stream
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream
-      }
-      // Gửi video/audio của mình đến peer connection
-      if (peerConnectionRef.current) {
-        stream.getTracks().forEach((track) => peerConnectionRef.current?.addTrack(track, stream))
-      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: !isVideoOff,
+        audio: !isMuted
+      })
+      setLocalStream(stream)
     } catch (error) {
-      console.error('Error accessing media devices.', error)
+      console.error('Error initializing local video:', error)
     }
   }
-  const createPeerConnection = () => {
-    const peerConnection = new RTCPeerConnection(rtcConfiguration)
-
-    // Lắng nghe ICE candidates
-    peerConnection.onicecandidate = ({ candidate }) => {
-      if (candidate) {
-        sendSignal(
-          currentUser?.username || '',
-          currentUser?.id || '',
-          activeChat || '',
-          'candidate',
-          {
+  // Step 3: On call received
+  const onCallReceived = (call) => {
+    console.log('Received call:', call.body)
+    setIsIncomingCallOpen(true)
+    // Find th user name depend on id
+    const user = listUsers.find((user) => user.id === call.body)
+    if (user) {
+      setCallerName(user.username)
+    } else {
+      setCallerName('Người lạ')
+    }
+  }
+  // Step 4: On call offer
+  const onCallOffer = (offer) => {
+    console.log('Received offer:', offer)
+    console.log('offer.body: ', offer.body)
+    const o = JSON.parse(offer.body)['offer']
+    console.log('o', o)
+    console.log(new RTCSessionDescription(o))
+    console.log(typeof new RTCSessionDescription(o))
+    if (localPeer.current) {
+      console.log('localPeer.current', localPeer.current)
+      localPeer.current.ontrack = (event) => {
+        console.log('Local stream: ', event)
+        console.log('event.streams', event.streams)
+        setRemoteStream(event.streams[0])
+      }
+      localPeer.current.onicecandidate = (event) => {
+        console.log('Local ice candidate: ', event)
+        if (event.candidate) {
+          console.log('Candidate: ', event.candidate)
+          const candidate = {
             type: 'candidate',
-            candidate
+            label: event.candidate.sdpMLineIndex,
+            id: event.candidate.candidate
           }
-        )
+          console.log('Sneding candidate: ', candidate)
+          sendCandidate(currentUser?.id || '', activeChat || '', candidate)
+        }
       }
-    }
-
-    //   // Lắng nghe media stream từ remote peer
-    peerConnection.ontrack = (event) => {
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0]
-      }
-    }
-
-    //   // Quản lý sự thay đổi kết nối
-    peerConnection.onconnectionstatechange = () => {
-      const connectionState = peerConnection.iceConnectionState
-      if (connectionState === 'disconnected' || connectionState === 'failed') {
-        console.log('Connection lost, stopping current call.')
-        setIsVideoCallOpen(false)
-      }
-      peerConnectionRef.current = peerConnection
+      // Adding Audio and Video Local Peer
+      localStream?.getTracks().forEach((track) => {
+        localPeer.current?.addTrack(track, localStream)
+      })
+      // Description
+      localPeer.current?.setRemoteDescription(new RTCSessionDescription(o))
+      // Create answer
+      localPeer.current?.createAnswer().then((answer) => {
+        console.log('Answer: ', answer)
+        localPeer.current?.setLocalDescription(answer)
+        sendAnswer(currentUser?.id || '', activeChat || '', answer)
+      })
+    } else {
+      console.log('localPeer.current is null')
+      console.log('currentUser', currentUser)
+      console.log('activeChat', activeChat)
     }
   }
-  // Kết thúc cuộc gọi
-  const endCall = () => {
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close()
-      peerConnectionRef.current = null
+  // Step 5: On call answer
+  const onCallAnswer = (answer) => {
+    console.log('Received answer:', answer)
+    const o = JSON.parse(answer.body)['answer']
+    console.log('o', o)
+    console.log(new RTCSessionDescription(o))
+    console.log(typeof new RTCSessionDescription(o))
+    if (localPeer.current) {
+      localPeer.current.setRemoteDescription(new RTCSessionDescription(o))
     }
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop())
-      localStreamRef.current = null
-    }
-    sendSignal(currentUser?.username || '', currentUser?.id || '', activeChat || '', 'stop', {
-      type: 'stop'
+  }
+  // Step 6: On call candidate
+  const onCallCandidate = (candidate) => {
+    console.log('Received candidate:', candidate)
+    const o = JSON.parse(candidate.body)['candidate']
+    console.log('o', o)
+    console.log(o['lable'])
+    console.log(o['id'])
+    const iceCandidate = new RTCIceCandidate({
+      candidate: o['id'],
+      sdpMLineIndex: o['label']
     })
+    localPeer.current?.addIceCandidate(iceCandidate)
+  }
+  // Step 7: On call end
+  const onCallEnd = (end) => {
+    console.log('Call ended: ', end)
     setIsVideoCallOpen(false)
   }
+  // Step 8: On call reject
+  const onCallReject = (reject) => {
+    console.log('Call rejected: ', reject)
+  }
+  // Step 10: On call accept
+  const onCallAccept = (accept) => {
+    if (!activeChat || !currentUser?.id || !localPeer.current) {
+      console.error('Missing required data for call accept')
+      return
+    }
+
+    console.log('Call accepted:', accept)
+    setIsIncomingCallOpen(false)
+
+    localPeer.current.ontrack = (event) => {
+      setRemoteStream(event.streams[0])
+    }
+
+    // ... rest of function
+  }
+  // Step 10: On call signal
+  const onSignalReceived = (signal) => {
+    console.log('Received signal:', signal)
+  }
+  // HANDLE VIDEO CALL
+  const handleVideoCall = async () => {
+    if (!activeChat || !currentUser?.id) {
+      console.error('No active chat or current user')
+      return
+    }
+
+    setIsIncomingCallOpen(false)
+    sendVideoCall(currentUser.id, activeChat)
+    setIsVideoCallOpen(true)
+    await initializeLocalVideo()
+    await createPeerConnection()
+  }
+  const handleAnswer = async () => {
+    if (currentUser?.id && activeChat) {
+      sendVideoCallAccept(currentUser?.id || '', activeChat || '')
+    } else {
+      console.log('currentUser?.id or activeChat is null')
+    }
+    setIsIncomingCallOpen(false)
+    setIsVideoCallOpen(true)
+    initializeLocalVideo()
+    await createPeerConnection()
+  }
+  const handleDecline = () => {
+    if (currentUser?.id && activeChat) {
+      sendVideoCallReject(currentUser?.id || '', activeChat || '')
+    } else {
+      console.log('currentUser?.id or activeChat is null')
+    }
+    setIsIncomingCallOpen(false)
+    setIsVideoCallOpen(false)
+  }
+  const handleEndCall = () => {
+    if (currentUser?.id && activeChat) {
+      sendVideoCallEnd(currentUser?.id || '', activeChat || '')
+    } else {
+      console.log('currentUser?.id or activeChat is null')
+    }
+    setIsVideoCallOpen(false)
+  }
+  // ================================
+  // Handle message from server
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -198,46 +317,25 @@ export default function Messenger() {
         })
       }
     }
-    // Handle signaling from server
-    const handleSignal = (signal) => {
-      console.log('Received signal:', signal)
-      if (signal.type === 'offer') {
-        setIsIncomingCallOpen(true)
-        setCallerName(signal.name)
-        createOffer()
-      }
-      if (signal.type === 'answer') {
-        createAnswer()
-      }
-      if (signal.type === 'candidate') {
-        peerConnectionRef.current?.addIceCandidate(new RTCIceCandidate(signal.candidate))
-      }
-    }
-    connectWebSocket(handleMessage, currentUser?.id || '', handleSignal)
+
+    connectWebSocket(
+      handleMessage,
+      currentUser?.id || '',
+      onSignalReceived,
+      onCallReceived,
+      onCallOffer,
+      onCallAnswer,
+      onCallCandidate,
+      onCallEnd,
+      onCallReject,
+      onCallAccept
+    )
     fetchUsers()
     return () => {
       disconnectWebSocket()
     }
   }, [currentUser])
-  const onAnswer = () => {
-    if (currentUser?.id) {
-      sendSignal(currentUser.username, currentUser.id, activeChat || '', 'answer', {
-        type: 'answer',
-        sdp: 'answer.sdp'
-      })
-      setIsIncomingCallOpen(false)
-      setIsVideoCallOpen(true)
-    }
-  }
-  const onDecline = () => {
-    if (currentUser?.id) {
-      sendSignal(currentUser.username, currentUser.id, activeChat || '', 'stop', {
-        type: 'stop'
-      })
-    }
-    setIsIncomingCallOpen(false)
-    endCall()
-  }
+
   useEffect(() => {
     const lowercasedQuery = searchQuery.toLowerCase()
     const filtered = listUsers?.filter(
@@ -310,20 +408,6 @@ export default function Messenger() {
       fileInputRef.current.value = ''
     }
   }
-  const handleVideoCall = async () => {
-    setIsIncomingCallOpen(false)
-    setIsVideoCallOpen(true)
-    console.log('Video call open: ', isVideoCallOpen)
-    if (currentUser?.id) {
-      console.log('destination', `/user/${currentUser.id}/queue/signaling`)
-      sendSignal(currentUser.username, currentUser.id, activeChat || '', 'offer', {
-        type: 'offer',
-        sdp: 'offer.sdp'
-      })
-      await initializeLocalVideo()
-      createPeerConnection()
-    }
-  }
 
   const handleVoiceCall = () => {
     setIsVoiceCallOpen(true)
@@ -348,6 +432,8 @@ export default function Messenger() {
   }
   const setActiveChatId = async (userId: string) => {
     try {
+      console.log('userId-activeChat', userId)
+      setActiveChat(userId)
       const messages = await messageService.getChatMessages(currentUser?.id || '', userId)
       // setMessages((prev) => ({
       //   ...prev,
@@ -373,13 +459,16 @@ export default function Messenger() {
     } catch (error) {
       console.error('Failed to fetch chat messages:', error)
     }
-    setActiveChat(userId)
+
     console.log('userId', userId)
     // Initialize empty message array if it doesn't exist
     setMessages((prev) => ({
       ...prev,
       [userId]: prev[userId] || []
     }))
+  }
+  const handleGroupCall = () => {
+    setIsGroupCallOpen(!isGroupCallOpen)
   }
   return (
     <div className="flex h-full w-full mx-auto border rounded-lg overflow-hidden relative">
@@ -398,6 +487,16 @@ export default function Messenger() {
         {/* Action buttons at bottom */}
         <div className="mt-auto">
           <div className="p-4 flex flex-col gap-4">
+            {/* Add button for group call */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-full hover:bg-slate-200"
+              aria-label="Group call"
+              onClick={handleGroupCall}
+            >
+              <VideoIcon className="h-5 w-5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -612,15 +711,26 @@ export default function Messenger() {
           }}
           senderId={currentUser?.id || ''}
           receiverId={activeChat || ''}
-          localVideoRef={localVideoRef}
-          remoteVideoRef={remoteVideoRef}
-          peerConnectionRef={peerConnectionRef}
-          localStreamRef={localStreamRef}
-          endCall={endCall}
+          localVideoRef={localStream}
+          remoteVideoRef={remoteStream}
+          endCall={handleEndCall}
+          isOpen={isVideoCallOpen}
+          onClose={() => setIsVideoCallOpen(false)}
         />
       )}
       {isIncomingCallOpen && (
-        <IncomingCallModal callerName={callerName} onAnswer={onAnswer} onDecline={onDecline} />
+        <IncomingCallModal
+          callerName={callerName}
+          onAnswer={handleAnswer}
+          onDecline={handleDecline}
+        />
+      )}
+      {isGroupCallOpen && (
+        <RoomJoinModal
+          isOpen={isGroupCallOpen}
+          setIsOpen={setIsGroupCallOpen}
+          setRoomId={setRoomId}
+        />
       )}
     </div>
   )

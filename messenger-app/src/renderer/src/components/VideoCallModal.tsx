@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@radix-ui/react-avatar'
 import { Maximize2, Mic, MicOff, PhoneOff, Video, VideoOff } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from './ui/button'
 
 interface VideoCallModalProps {
@@ -9,37 +9,48 @@ interface VideoCallModalProps {
     name: string
     avatar: string
   }
-  // Thêm các props để truyền tín hiệu WebRTC từ server
   senderId: string
   receiverId: string
-  localVideoRef: React.RefObject<HTMLVideoElement>
-  remoteVideoRef: React.RefObject<HTMLVideoElement>
-  peerConnectionRef: React.RefObject<RTCPeerConnection>
-  localStreamRef: React.RefObject<MediaStream>
+  localVideoRef: MediaStream | null
+  remoteVideoRef: MediaStream | null
   endCall: () => void
+  isOpen: boolean
+  onClose: () => void
 }
 
 export function VideoCallModal({
   callee,
   localVideoRef,
   remoteVideoRef,
-  endCall
+  endCall,
+  isOpen,
+  onClose
 }: VideoCallModalProps) {
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoOff, setIsVideoOff] = useState(false)
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [callDuration, setCallDuration] = useState(0)
   const [isCallStarted, setIsCallStarted] = useState(false)
-  const [isOpen, setIsOpen] = useState(true)
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
-
+  const localRef = useRef<HTMLVideoElement>(null)
+  const remoteRef = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    if (localVideoRef && localRef.current) {
+      localRef.current.srcObject = localVideoRef
+    }
+  }, [localVideoRef])
+  useEffect(() => {
+    if (remoteVideoRef && remoteRef.current) {
+      remoteRef.current.srcObject = remoteVideoRef
+    }
+  }, [remoteVideoRef])
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen} aria-labelledby="video-call-modal">
+    <Dialog open={isOpen} onOpenChange={onClose} aria-labelledby="video-call-modal">
       <DialogContent className="sm:max-w-[700px] p-0 bg-slate-100 ">
         <DialogHeader className="p-4">
           <DialogTitle>Video Call with {callee.name}</DialogTitle>
@@ -49,11 +60,11 @@ export function VideoCallModal({
             className={`aspect-video bg-muted ${isFullScreen ? 'h-[80vh]' : 'h-[50vh]'} transition-all duration-300 ease-in-out`}
           >
             {/* Remote video */}
-            <video ref={remoteVideoRef} autoPlay loop className="w-full h-full object-cover" />
+            <video ref={remoteRef} autoPlay loop className="w-full h-full object-cover" />
             {/* Local video */}
             <div className="absolute top-4 right-4 w-1/4 aspect-video bg-muted rounded-lg overflow-hidden shadow-lg">
               <video
-                ref={localVideoRef}
+                ref={localRef}
                 autoPlay
                 loop
                 muted
