@@ -8,31 +8,39 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 interface RoomJoinModalProps {
   isOpen: boolean
   setIsOpen: (isOpen: boolean) => void
   setRoomId: (room_id: string) => void
 }
+const getRoomIDFromURL = (url: string): string | null => {
+  const params = new URLSearchParams(new URL(url).search)
+  return params.get('roomID')
+}
 export default function RoomJoinModal({ isOpen, setIsOpen, setRoomId }: RoomJoinModalProps) {
   const [roomInput, setRoomInput] = useState('')
-
+  const navigate = useNavigate()
   const handleJoinRoom = () => {
     console.log('Joining room:', roomInput)
-    setRoomId(roomInput)
-    setIsOpen(false)
+    // Convert link to roomID
+    const roomID = getRoomIDFromURL(roomInput)
+    if (roomID) {
+      setRoomId(roomID)
+      navigate(`/video?roomID=${roomID}`)
+      setIsOpen(false)
+    } else {
+      console.error('Room ID not found in the URL')
+    }
   }
 
   const handleCreateRoom = () => {
     console.log('Creating new room')
-    setRoomId(roomInput)
     setIsOpen(false)
+    navigate(`/video`)
   }
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      {/* <DialogTrigger asChild>
-        <Button variant="outline">Join or Create Room</Button>
-      </DialogTrigger> */}
       <DialogContent className="sm:max-w-[425px] bg-slate-100">
         <DialogHeader>
           <DialogTitle>Join or Create Room</DialogTitle>

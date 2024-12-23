@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label'
 import authService from '@renderer/services/authService'
 import { useState } from 'react'
 import { useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import { useToast } from './ui/use-toast'
 
 export default function LoginForm() {
@@ -11,6 +12,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState('')
   const dispatch = useDispatch()
   const { toast } = useToast()
+  const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -21,6 +23,7 @@ export default function LoginForm() {
         title: 'Login Success',
         description: 'You are now logged in'
       })
+      navigate('/chat')
     } catch (error) {
       toast({
         variant: 'destructive',

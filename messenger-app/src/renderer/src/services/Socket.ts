@@ -91,14 +91,6 @@ let client: Client
 export const connectWebSocket = (
   onMessageReceived: (message) => void,
   userId: string,
-  onSignalReceived: (signal) => void,
-  onCallReceived: (call) => void,
-  onCallOffer: (offer) => void,
-  onCallAnswer: (answer) => void,
-  onCallCandidate: (candidate) => void,
-  onCallEnd: (end) => void,
-  onCallReject: (reject) => void,
-  onCallAccept: (accept) => void
 ) => {
   if (!userId) {
     console.error('user_id is required')
@@ -126,55 +118,6 @@ export const connectWebSocket = (
       }
     })
 
-    // Subscribe to signaling
-    client.subscribe(`/user/${userId}/queue/signaling`, (message) => {
-      if (message.body) {
-        const signal = JSON.parse(message.body)
-        console.log('Received signal:', signal)
-        onSignalReceived(signal)
-      }
-    })
-    // ---------------VIDEO CALL---------------------
-    client.subscribe('/topic/testServer', (message) => {
-      console.log('Message from signaling server:', message)
-    })
-    // ------------------CALL------------------
-    client.subscribe(`/user/${userId}/topic/call`, (call) => {
-      console.log('Call from signaling server:', call)
-      onCallReceived(call)
-    })
-    // ------------------CALL OFFER------------------
-    client.subscribe(`/user/${userId}/topic/offer`, (offer) => {
-      console.log('Offer from signaling server:', offer)
-      onCallOffer(offer)
-    })
-    // ------------------CALL ANSWER------------------
-    client.subscribe(`/user/${userId}/topic/answer`, (answer) => {
-      console.log('Answer from signaling server:', answer)
-      onCallAnswer(answer)
-    })
-    // ------------------CALL CANDIDATE------------------
-    client.subscribe(`/user/${userId}/topic/candidate`, (candidate) => {
-      console.log('Candidate from signaling server:', candidate)
-      onCallCandidate(candidate)
-    })
-    // ------------------CALL END------------------
-    client.subscribe(`/user/${userId}/topic/end`, (end) => {
-      console.log('Call ended', end)
-      onCallEnd(end)
-    })
-    // ------------------CALL REJECT------------------
-    client.subscribe(`/user/${userId}/topic/reject`, (reject) => {
-      console.log('Call rejected', reject)
-      onCallReject(reject)
-    })
-    // ------------------CALL ACCEPT------------------
-    client.subscribe(`/user/${userId}/topic/accept`, (accept) => {
-      console.log('Call accepted', accept)
-      onCallAccept(accept)
-    })
-
-    // Send
     // Send
     client.publish({
       destination: '/app/addUser',

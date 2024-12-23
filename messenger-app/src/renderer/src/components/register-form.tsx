@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label'
 import authService from '@renderer/services/authService'
 import { useState } from 'react'
 import { useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import { toast } from './ui/use-toast'
 
 export default function RegisterForm() {
@@ -12,7 +13,7 @@ export default function RegisterForm() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const dispatch = useDispatch()
-
+  const navigate = useNavigate()
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (password !== confirmPassword) {
@@ -28,6 +29,7 @@ export default function RegisterForm() {
         title: 'Register Success',
         description: 'You are now registered'
       })
+      navigate('/chat')
     } catch (error) {
       console.error('Register failed:', error)
       toast({
