@@ -24,14 +24,31 @@ export default function RoomJoinModal({ isOpen, setIsOpen, setRoomId }: RoomJoin
   const handleJoinRoom = () => {
     console.log('Joining room:', roomInput)
     // Convert link to roomID
-    const roomID = getRoomIDFromURL(roomInput)
-    if (roomID) {
-      setRoomId(roomID)
-      navigate(`/video?roomID=${roomID}`)
-      setIsOpen(false)
+
+    if (roomInput && roomInput.includes('http')) {
+      const roomID = getRoomIDFromURL(roomInput)
+      if (roomID) {
+        setRoomId(roomID)
+        navigate(`/video?roomID=${roomID}`)
+        setIsOpen(false)
+      } else {
+        console.error('Room ID not found in the URL')
+      }
     } else {
-      console.error('Room ID not found in the URL')
+      setRoomId(roomInput)
+      navigate(`/video?roomID=${roomInput}`)
+      setIsOpen(false)
     }
+    // If roomId is not link, navigate to video page
+    // const roomID = getRoomIDFromURL(roomInput)
+
+    // if (roomID) {
+    //   setRoomId(roomID)
+    //   navigate(`/video?roomID=${roomID}`)
+    //   setIsOpen(false)
+    // } else {
+    //   console.error('Room ID not found in the URL')
+    // }
   }
 
   const handleCreateRoom = () => {
