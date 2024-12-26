@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import LoginForm from '@renderer/components/login-form'
+import OTP_verification from '@renderer/components/otp-verification'
 import RegisterForm from '@renderer/components/register-form'
 import { useState } from 'react'
 
@@ -9,7 +10,7 @@ export default function Auth() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <Card className="w-[400px]">
+      <Card className="w-[400p]">
         <CardHeader>
           <CardTitle>Welcome</CardTitle>
           <CardDescription>Login or create an account to get started.</CardDescription>

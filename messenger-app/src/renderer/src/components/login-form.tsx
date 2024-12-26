@@ -1,17 +1,36 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import authService from '@renderer/services/authService'
 import { useState } from 'react'
+import { useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
+import { useToast } from './ui/use-toast'
 
 export default function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const dispatch = useDispatch()
+  const { toast } = useToast()
+  const navigate = useNavigate()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would typically handle the login logic
-    console.log('Login attempt', { email, password })
-    // login(email)
+    try {
+      await authService.login(email, password, dispatch)
+      toast({
+        variant: 'default',
+        title: 'Login Success',
+        description: 'You are now logged in'
+      })
+      navigate('/chat')
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: error instanceof Error ? error.message : 'An error occurred during login'
+      })
+    }
   }
 
   return (
@@ -38,7 +57,7 @@ export default function LoginForm() {
           required
         />
       </div>
-      <Button type="submit" className="w-full">
+      <Button type="submit" className="w-full bg-blue-500 text-white">
         Login
       </Button>
     </form>
