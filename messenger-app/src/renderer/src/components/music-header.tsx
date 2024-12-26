@@ -4,18 +4,18 @@ import { Input } from './ui/input'
 
 const MusicHeader = () => {
   return (
-    <header className="border-b">
+    <header className="border-b z-10">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <nav className="flex items-center space-x-4">
-          <Link to="/library" className="flex items-center space-x-2 text-sm font-medium">
+          <Link to="/music/library" className="flex items-center space-x-2 text-sm font-medium">
             <Library className="w-4 h-4" />
             <span>Library</span>
           </Link>
-          <Link to="/player" className="flex items-center space-x-2 text-sm font-medium">
+          <Link to="/music/player" className="flex items-center space-x-2 text-sm font-medium">
             <Play className="w-4 h-4" />
             <span>Player</span>
           </Link>
-          <Link to="/trending" className="flex items-center space-x-2 text-sm font-medium">
+          <Link to="/music/trending" className="flex items-center space-x-2 text-sm font-medium">
             <TrendingUp className="w-4 h-4" />
             <span>Trending</span>
           </Link>

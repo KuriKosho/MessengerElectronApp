@@ -1,7 +1,7 @@
 import Layout from '@renderer/components/layout'
 import MusicHeader from '@renderer/components/music-header'
 
-const MusicPage = () => {
+const MusicFeedPage = () => {
   return (
     <div className="flex flex-row h-full w-full ">
       <Layout />
@@ -12,4 +12,4 @@ const MusicPage = () => {
   )
 }
 
-export default MusicPage
+export default MusicFeedPage
