@@ -1,4 +1,5 @@
 import axiosInstance from '@renderer/config/axiosConfig'
+import { sendMessage } from './Socket'
 
 const getChatMessagesPath = '/messages'
 
@@ -15,15 +16,15 @@ class MessageService {
   }
   async sendAttachmentMessage(senderId: string, receiverId: string, attachment: File) {
     const formData = new FormData()
-    formData.append('senderId', senderId)
-    formData.append('receiverId', receiverId)
     formData.append('file', attachment)
-    const response = await axiosInstance.post('/upload', formData, {
+    const response = await axiosInstance.post('/file/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     })
+    console.log('File uploaded:', response.data.data)
     if (response.data && response.data.success) {
+      sendMessage(senderId, receiverId, response.data.data)
       return response.data.data
     } else {
       throw new Error('Failed to send attachment message')

@@ -66,6 +66,18 @@ export default function Messenger() {
     }
     const handleMessage = (message) => {
       if (message.senderId && message.content) {
+        // Format content if content have link
+
+        if (message.content.includes('https')) {
+          const content = message.content.split(' ')
+          message.content = content
+            .map((c) =>
+              c.startsWith('https')
+                ? `<a href="${c}" target="_blank" download class="text-blue-500 underline">Send an attachment</a>`
+                : c
+            )
+            .join(' ')
+        }
         const newMsg: Message = {
           id: message.id,
           userId: message.senderId,
@@ -125,8 +137,7 @@ export default function Messenger() {
         newMsg.attachment = {
           name: attachment.name,
           url: URL.createObjectURL(attachment),
-          type: attachment.type,
-          file: attachment
+          type: attachment.type
         }
       }
       setMessages((prevMessages) => ({
@@ -302,7 +313,13 @@ export default function Messenger() {
                       message.isMe ? 'bg-slate-700 text-white' : 'bg-slate-100'
                     }`}
                   >
-                    <p>{message?.content}</p>
+                    {/* <p>{message?.content}</p> */}
+                    {/* {message?.content} */}
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html: message?.content
+                      }}
+                    />
                     {message?.attachment && (
                       <div className="mt-2">
                         {message?.attachment?.type?.startsWith('image/') ? (
