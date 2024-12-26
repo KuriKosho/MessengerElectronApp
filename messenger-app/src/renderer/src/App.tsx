@@ -2,14 +2,22 @@ import { useEffect } from 'react'
 import { Provider, useSelector } from 'react-redux'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import Auth from './pages/auth/auth'
+import GamePage from './pages/game/game-page'
 import Messenger from './pages/messenger/messenger'
+import MusicPage from './pages/music/music-page'
 import VideoRoom from './pages/p2p/VideoRoom'
+import ServerPage from './pages/server/server-page'
+import StreamPage from './pages/stream/stream-page'
 import store, { RootState } from './stores/store'
 
 export const routes = {
   login: '/',
   chat: '/chat',
-  video: '/video'
+  video: '/video',
+  stream: '/stream',
+  server: '/server',
+  game: '/game',
+  music: '/music'
 }
 function App() {
   const isLoggedIn = useSelector((state: RootState) => state.user.isLoggedIn)
@@ -21,6 +29,10 @@ function App() {
           <Route path={routes.login} element={<Auth />} />
           <Route path={routes.chat} element={<Messenger />} />
           <Route path={routes.video} element={<VideoRoom />} />
+          <Route path={routes.stream} element={<StreamPage />} />
+          <Route path={routes.game} element={<GamePage />} />
+          <Route path={routes.music} element={<MusicPage />} />
+          <Route path={routes.server} element={<ServerPage />} />
         </Routes>
       </Provider>
     </BrowserRouter>

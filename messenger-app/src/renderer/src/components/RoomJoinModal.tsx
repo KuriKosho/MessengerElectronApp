@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom'
 interface RoomJoinModalProps {
   isOpen: boolean
   setIsOpen: (isOpen: boolean) => void
-  setRoomId: (room_id: string) => void
+  setRoomId?: (room_id: string) => void
 }
 const getRoomIDFromURL = (url: string): string | null => {
   const params = new URLSearchParams(new URL(url).search)
@@ -28,14 +28,14 @@ export default function RoomJoinModal({ isOpen, setIsOpen, setRoomId }: RoomJoin
     if (roomInput && roomInput.includes('http')) {
       const roomID = getRoomIDFromURL(roomInput)
       if (roomID) {
-        setRoomId(roomID)
+        // setRoomId(roomID)
         navigate(`/video?roomID=${roomID}`)
         setIsOpen(false)
       } else {
         console.error('Room ID not found in the URL')
       }
     } else {
-      setRoomId(roomInput)
+      // setRoomId(roomInput)
       navigate(`/video?roomID=${roomInput}`)
       setIsOpen(false)
     }

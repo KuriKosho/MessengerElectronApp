@@ -1,9 +1,9 @@
 import clsx, { ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
-export const WEBSOCKET_URL = 'http://172.20.10.3:8443/ws'
-export const SIGNALING_URL = 'http: //172.20.10.3:8443/websocket'
-export const API_URL = 'http://172.20.10.3:8443/api'
+export const WEBSOCKET_URL = 'http://localhost:8443/ws'
+export const SIGNALING_URL = 'http: //localhost:8443/websocket'
+export const API_URL = 'http://localhost:8443/api'
 const dateFormatter = new Intl.DateTimeFormat(window.context.locale, {
   dateStyle: 'short',
   timeStyle: 'short',

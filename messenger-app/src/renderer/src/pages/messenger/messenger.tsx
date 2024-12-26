@@ -2,6 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import Layout from '@renderer/components/layout'
 import RoomJoinModal from '@renderer/components/RoomJoinModal'
 import { toast } from '@renderer/components/ui/use-toast'
 import authService from '@renderer/services/authService'
@@ -11,19 +12,7 @@ import { connectWebSocket, disconnectWebSocket, sendMessage } from '@renderer/se
 import { User } from '@renderer/stores/listUsersSlice'
 import { AppDispatch, RootState } from '@renderer/stores/store'
 import { calculateTimeAgo } from '@renderer/utils'
-import {
-  LogOut,
-  MessageCircle,
-  MoreVertical,
-  Paperclip,
-  Phone,
-  Search,
-  Send,
-  Settings,
-  Video,
-  VideoIcon,
-  X
-} from 'lucide-react'
+import { MessageCircle, MoreVertical, Paperclip, Phone, Search, Send, Video, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
@@ -239,50 +228,7 @@ export default function Messenger() {
   return (
     <div className="flex h-full w-full mx-auto border rounded-lg overflow-hidden relative">
       {/* Sidebar for logged in users */}
-      <div className="w-15 border-r bg-muted/10 flex flex-col justify-between">
-        {/* User profile */}
-        <div className="p-4 border-b">
-          <div className="flex items-center justify-center">
-            <Avatar className="h-10 w-10 bg-slate-300">
-              <AvatarImage src="/placeholder.svg?height=48&width=48" alt="User" />
-              <AvatarFallback>{currentUser?.username[0].toUpperCase()}</AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-
-        {/* Action buttons at bottom */}
-        <div className="mt-auto">
-          <div className="p-4 flex flex-col gap-4">
-            {/* Add button for group call */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-full hover:bg-slate-200"
-              aria-label="Group call"
-              onClick={handleGroupCall}
-            >
-              <VideoIcon className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-full hover:bg-slate-200"
-              aria-label="Settings"
-            >
-              <Settings className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-full hover:bg-slate-200 text-red-500 hover:text-red-600"
-              aria-label="Logout"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      <Layout />
       {/* Sidebar */}
       <div className="w-80 border-r bg-muted/10">
         <div className="p-4 border-b">
