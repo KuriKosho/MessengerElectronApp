@@ -9,6 +9,7 @@ import VideoRoom from './pages/p2p/VideoRoom'
 import ServerPage from './pages/server/server-page'
 import StreamPage from './pages/stream/stream-page'
 import store, { RootState } from './stores/store'
+import OTP_verification from './components/otp-verification'
 
 export const routes = {
   login: '/',
@@ -17,11 +18,12 @@ export const routes = {
   stream: '/stream',
   server: '/server',
   game: '/game',
-  music: '/music'
+  music: '/music',
+  otp: '/otp',
 }
 function App() {
   const isLoggedIn = useSelector((state: RootState) => state.user.isLoggedIn)
-  useEffect(() => {}, [])
+  useEffect(() => { }, [])
   return (
     <BrowserRouter>
       <Provider store={store}>
@@ -33,6 +35,7 @@ function App() {
           <Route path={routes.game} element={<GamePage />} />
           <Route path={routes.music} element={<MusicPage />} />
           <Route path={routes.server} element={<ServerPage />} />
+          <Route path={routes.otp} element={< OTP_verification />} />
         </Routes>
       </Provider>
     </BrowserRouter>
