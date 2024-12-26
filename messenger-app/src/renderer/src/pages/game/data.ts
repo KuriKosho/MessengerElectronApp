@@ -162,99 +162,26 @@ export const recentGames: Game[] = [
     imageUrl:
       'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTsR2zQKHQ_HosECFokoc75SfbX2qPj8whlMg&s',
     link: '#',
-    embedUrl: 'https://example.com/embed/game4'
-  }
-]
-
-export const twoPlayerGames: Game[] = [
+    embedUrl: 'https://playsnake.org/'
+  },
   {
     id: '5',
-    title: '2-Player Game 1',
-    imageUrl: '/placeholder.svg?height=100&width=200',
+    title: 'Minesweeper',
+    imageUrl:
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQW2NGykzY3J9y-CMxTjyaU4kTEQ6u00gAlw&s',
     link: '#',
-    embedUrl: 'https://example.com/embed/game5'
+    embedUrl: 'ttps://minesweeper.online/'
   },
   {
     id: '6',
-    title: '2-Player Game 2',
-    imageUrl: '/placeholder.svg?height=100&width=200',
+    title: 'Sudoku',
+    imageUrl:
+      'https://store-images.s-microsoft.com/image/apps.20177.9007199266246402.7c18c93d-0b98-4bdb-8459-2bf2a69a1bbf.84b8a60e-d086-4293-a29b-f3ad993e5fab?mode=scale&q=90&h=1080&w=1920',
     link: '#',
-    embedUrl: 'https://example.com/embed/game6'
-  },
-  {
-    id: '7',
-    title: '2-Player Game 3',
-    imageUrl: '/placeholder.svg?height=100&width=200',
-    link: '#',
-    embedUrl: 'https://example.com/embed/game7'
-  },
-  {
-    id: '8',
-    title: '2-Player Game 4',
-    imageUrl: '/placeholder.svg?height=100&width=200',
-    link: '#',
-    embedUrl: 'https://example.com/embed/game8'
+    embedUrl: 'https://www.sudokuweb.org/'
   }
 ]
 
-export const singlePlayerGames: Game[] = [
-  {
-    id: '9',
-    title: 'Single-Player Game 1',
-    imageUrl: '/placeholder.svg?height=100&width=200',
-    link: '#',
-    embedUrl: 'https://example.com/embed/game9'
-  },
-  {
-    id: '10',
-    title: 'Single-Player Game 2',
-    imageUrl: '/placeholder.svg?height=100&width=200',
-    link: '#',
-    embedUrl: 'https://example.com/embed/game10'
-  },
-  {
-    id: '11',
-    title: 'Single-Player Game 3',
-    imageUrl: '/placeholder.svg?height=100&width=200',
-    link: '#',
-    embedUrl: 'https://example.com/embed/game11'
-  },
-  {
-    id: '12',
-    title: 'Single-Player Game 4',
-    imageUrl: '/placeholder.svg?height=100&width=200',
-    link: '#',
-    embedUrl: 'https://example.com/embed/game12'
-  }
-]
-
-export const featuredGames: Game[] = [
-  {
-    id: '13',
-    title: 'Featured Game 1',
-    imageUrl: '/placeholder.svg?height=100&width=200',
-    link: '#',
-    embedUrl: 'https://example.com/embed/game13'
-  },
-  {
-    id: '14',
-    title: 'Featured Game 2',
-    imageUrl: '/placeholder.svg?height=100&width=200',
-    link: '#',
-    embedUrl: 'https://example.com/embed/game14'
-  },
-  {
-    id: '15',
-    title: 'Featured Game 3',
-    imageUrl: '/placeholder.svg?height=100&width=200',
-    link: '#',
-    embedUrl: 'https://example.com/embed/game15'
-  },
-  {
-    id: '16',
-    title: 'Featured Game 4',
-    imageUrl: '/placeholder.svg?height=100&width=200',
-    link: '#',
-    embedUrl: 'https://example.com/embed/game16'
-  }
-]
+export const twoPlayerGames: Game[] = recentGames
+export const singlePlayerGames: Game[] = recentGames
+export const featuredGames: Game[] = recentGames

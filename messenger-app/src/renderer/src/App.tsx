@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import OTP_verification from './components/otp-verification'
 import Auth from './pages/auth/auth'
 import Callback from './pages/callback/call-back'
+import GameDetails from './pages/game/[id]/game-details'
 import GamePage from './pages/game/game-page'
 import Messenger from './pages/messenger/messenger'
 import MusicFeedPage from './pages/music/music-feed-page'
@@ -30,7 +31,8 @@ export const routes = {
   player: '/music/player/:type/:id',
   otp: '/otp/:email',
   callback: '/callback',
-  settings: '/settings'
+  settings: '/settings',
+  game_details: '/game/:id/:embedUrl'
 }
 function App() {
   const isLoggedIn = useSelector((state: RootState) => state.user.isLoggedIn)
@@ -52,6 +54,7 @@ function App() {
           <Route path={routes.callback} element={<Callback />} />
           <Route path={routes.otp} element={<OTP_verification />} />
           <Route path={routes.settings} element={<SettingsPage />} />
+          <Route path={routes.game_details} element={<GameDetails />} />
         </Routes>
       </Provider>
     </BrowserRouter>
