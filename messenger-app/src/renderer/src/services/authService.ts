@@ -36,6 +36,7 @@ class AuthService {
         password,
         confirmPassword
       })
+
       if (response.data && response.data.success) {
         const user = response.data.data
         dispatch(login(user))

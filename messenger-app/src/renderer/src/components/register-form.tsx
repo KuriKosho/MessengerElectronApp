@@ -29,7 +29,7 @@ export default function RegisterForm() {
         title: 'Register Success',
         description: 'You are now registered'
       })
-      navigate('/chat')
+      navigate('/otp', { state: { email } })
     } catch (error) {
       console.error('Register failed:', error)
       toast({

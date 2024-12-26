@@ -13,6 +13,7 @@ import VideoRoom from './pages/p2p/VideoRoom'
 import ServerPage from './pages/server/server-page'
 import StreamPage from './pages/stream/stream-page'
 import store, { RootState } from './stores/store'
+import OTP_verification from './components/otp-verification'
 
 export const routes = {
   login: '/',
@@ -31,7 +32,7 @@ export const routes = {
 }
 function App() {
   const isLoggedIn = useSelector((state: RootState) => state.user.isLoggedIn)
-  useEffect(() => {}, [])
+  useEffect(() => { }, [])
   return (
     <BrowserRouter>
       <Provider store={store}>
@@ -47,6 +48,7 @@ function App() {
           <Route path={routes.player} element={<MusicPlayerPage />} />
           <Route path={routes.trending} element={<MusicTrendingPage />} />
           <Route path={routes.callback} element={<Callback />} />
+          <Route path={routes.otp} element={< OTP_verification />} />
         </Routes>
       </Provider>
     </BrowserRouter>
