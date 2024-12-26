@@ -49,7 +49,7 @@ const Layout = () => {
   }
   const handleMusic = () => {
     // dispatch(joinMusic())
-    navigate('/music')
+    navigate('/music/library')
   }
   const handleServer = () => {
     // dispatch(joinServer())

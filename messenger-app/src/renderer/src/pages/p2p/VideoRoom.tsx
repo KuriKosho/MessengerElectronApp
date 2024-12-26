@@ -51,7 +51,8 @@ export default function VideoRoom() {
         }
       ],
       scenario: {
-        mode: ZegoUIKitPrebuilt.GroupCall // To implement 1-on-1 calls, modify the parameter here to [ZegoUIKitPrebuilt.OneONoneCall].
+        // mode: ZegoUIKitPrebuilt.GroupCall // To implement 1-on-1 calls, modify the parameter here to [ZegoUIKitPrebuilt.OneONoneCall].
+        mode: ZegoUIKitPrebuilt.LiveStreaming // To implement 1-on-1 calls, modify the parameter here to [ZegoUIKitPrebuilt.OneONoneCall].
       },
       onReturnToHomeScreenClicked: () => {
         // Điều hướng về trang chat
