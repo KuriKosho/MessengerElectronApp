@@ -1,29 +1,68 @@
+import axiosInstance from '@renderer/config/axiosConfig'
 import { AppDispatch } from '@renderer/stores/store'
 import { login, logout } from '@renderer/stores/userSlice'
-import { apiUrl } from '@shared/constants'
-import axios from 'axios'
 
+const loginPath = '/login'
+const registerPath = '/register'
+const logoutPath = '/logout'
 class AuthService {
-  private apiUrl: string
-
-  constructor() {
-    this.apiUrl = apiUrl + '/api' // Thay bằng URL của server
-  }
-
-  async login(username: string, password: string, dispatch: AppDispatch) {
+  async login(email: string, password: string, dispatch: AppDispatch) {
     try {
-      const response = await axios.post(`${this.apiUrl}/login`, { username, password })
-      const user = response.data // Giả sử server trả về { id, username, token }
-      dispatch(login(user))
-      return user
+      const response = await axiosInstance.post(loginPath, { email, password })
+      if (response.data && response.data.success) {
+        const user = response.data.data
+        dispatch(login(user))
+        return user
+      } else {
+        throw new Error('Login failed')
+      }
     } catch (error) {
       console.error('Login failed:', error)
       throw error
     }
   }
 
-  logout(dispatch: AppDispatch) {
-    dispatch(logout())
+  async register(
+    username: string,
+    email: string,
+    password: string,
+    confirmPassword: string,
+    dispatch: AppDispatch
+  ) {
+    try {
+      const response = await axiosInstance.post(registerPath, {
+        username,
+        email,
+        password,
+        confirmPassword
+      })
+      if (response.data && response.data.success) {
+        const user = response.data.data
+        dispatch(login(user))
+
+        return user
+      } else {
+        throw new Error('Register failed')
+      }
+    } catch (error) {
+      console.error('Register failed:', error)
+      throw error
+    }
+  }
+
+  async logout(email: string, dispatch: AppDispatch) {
+    try {
+      const response = await axiosInstance.post(logoutPath, { email })
+      if (response.data && response.data.success) {
+        dispatch(logout())
+        return response.data
+      } else {
+        throw new Error('Logout failed')
+      }
+    } catch (error) {
+      console.error('Logout failed:', error)
+      throw error
+    }
   }
 }
 

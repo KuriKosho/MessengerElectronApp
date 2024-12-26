@@ -3,7 +3,9 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 export interface User {
   id: string
   username: string
-  token?: string // Lưu token xác thực (nếu cần)
+  email: string
+  password: string
+  online: boolean
 }
 
 export interface UserState {

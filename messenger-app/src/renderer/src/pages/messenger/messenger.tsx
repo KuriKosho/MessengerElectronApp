@@ -2,34 +2,20 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { VideoCallModal } from '@renderer/components/VideoCallModal'
-import { VoiceCallModal } from '@renderer/components/VoiceCallModal'
-import { AppDispatch } from '@renderer/stores/store'
-import { logout } from '@renderer/stores/userSlice'
-import {
-  LogOut,
-  MessageCircle,
-  MoreVertical,
-  Paperclip,
-  Phone,
-  Search,
-  Send,
-  Settings,
-  Video,
-  X
-} from 'lucide-react'
+import Layout from '@renderer/components/layout'
+import RoomJoinModal from '@renderer/components/RoomJoinModal'
+import { toast } from '@renderer/components/ui/use-toast'
+import authService from '@renderer/services/authService'
+import listUsersService from '@renderer/services/listUsersService'
+import messageService from '@renderer/services/messageService'
+import { connectWebSocket, disconnectWebSocket, sendMessage } from '@renderer/services/Socket'
+import { User } from '@renderer/stores/listUsersSlice'
+import { AppDispatch, RootState } from '@renderer/stores/store'
+import { calculateTimeAgo } from '@renderer/utils'
+import { MessageCircle, MoreVertical, Paperclip, Phone, Search, Send, Video, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useDispatch } from 'react-redux'
-
-interface User {
-  id: string
-  name: string
-  avatar: string
-  lastMessage?: string
-  timestamp: string
-  online?: boolean
-}
-
+import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 interface Attachment {
   name: string
   url: string
@@ -47,75 +33,75 @@ interface Message {
 
 export default function Messenger() {
   const dispatch = useDispatch<AppDispatch>()
-  // const socketService = new SocketService(dispatch)
+  const navigate = useNavigate()
+  const currentUser = useSelector((state: RootState) => state.user.currentUser)
+  const users: User[] = useSelector((state: RootState) => state.listUsers.users)
   const [activeChat, setActiveChat] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
-  const [messages, setMessages] = useState<Record<string, Message[]>>({
-    '1': [
-      { id: '1', userId: '1', content: 'Hey, how are you?', timestamp: '10:00 AM' },
-      {
-        id: '2',
-        userId: 'me',
-        content: "I'm good, thanks! How about you?",
-        timestamp: '10:01 AM',
-        isMe: true
-      },
-      { id: '3', userId: '1', content: 'Doing well! See you tomorrow!', timestamp: '10:02 AM' }
-    ],
-    '2': [
-      { id: '1', userId: '2', content: 'Can you help me with something?', timestamp: '9:30 AM' },
-      {
-        id: '2',
-        userId: 'me',
-        content: 'Sure, what do you need?',
-        timestamp: '9:31 AM',
-        isMe: true
-      },
-      { id: '3', userId: '2', content: 'Thanks for the help', timestamp: '9:32 AM' }
-    ]
-  })
+  const [listUsers, setListUsers] = useState<User[]>([])
+  const [messages, setMessages] = useState<Record<string, Message[]>>({})
   const [newMessage, setNewMessage] = useState('')
   const [attachment, setAttachment] = useState<File | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isVideoCallOpen, setIsVideoCallOpen] = useState(false)
-  const [isVoiceCallOpen, setIsVoiceCallOpen] = useState(false)
-  const users: User[] = [
-    {
-      id: '1',
-      name: 'Alex Johnson',
-      avatar: '/placeholder.svg?height=40&width=40',
-      lastMessage: 'See you tomorrow!',
-      timestamp: '2m ago',
-      online: true
-    },
-    {
-      id: '2',
-      name: 'Sarah Wilson',
-      avatar: '/placeholder.svg?height=40&width=40',
-      lastMessage: 'Thanks for the help',
-      timestamp: '1h ago',
-      online: true
-    },
-    {
-      id: '3',
-      name: 'Mike Brown',
-      avatar: '/placeholder.svg?height=40&width=40',
-      lastMessage: 'Great idea!',
-      timestamp: '2h ago'
+  const [isGroupCallOpen, setIsGroupCallOpen] = useState(false)
+  const [roomId, setRoomId] = useState('')
+  const onCreateRoom = () => {}
+  const onJoinRoom = () => {}
+  // Video call
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        console.log('users', currentUser?.id)
+        const users = await listUsersService.listUsers(dispatch, currentUser?.id || '')
+        if (users) {
+          // Filter out the current user from the list
+          const filteredUsers = users.filter((user) => user.id !== currentUser?.id)
+          setListUsers(filteredUsers)
+        }
+      } catch (error) {
+        console.error('Failed to fetch users:', error)
+      }
     }
-  ]
+    const handleMessage = (message) => {
+      if (message.senderId && message.content) {
+        const newMsg: Message = {
+          id: message.id,
+          userId: message.senderId,
+          content: message.content,
+          timestamp: new Date().toLocaleTimeString(),
+          isMe: message.senderId === currentUser?.id
+        }
+
+        setMessages((prev) => {
+          const chatId =
+            message.senderId === currentUser?.id ? message.receiverId : message.senderId
+          return {
+            ...prev,
+            [chatId]: [...(prev[chatId] || []), newMsg]
+          }
+        })
+      }
+    }
+
+    connectWebSocket(handleMessage, currentUser?.id || '')
+    fetchUsers()
+    return () => {
+      disconnectWebSocket()
+    }
+  }, [currentUser])
 
   useEffect(() => {
     const lowercasedQuery = searchQuery.toLowerCase()
-    const filtered = users.filter(
+    const filtered = listUsers?.filter(
       (user) =>
-        user.name.toLowerCase().includes(lowercasedQuery) ||
+        user.username.toLowerCase().includes(lowercasedQuery) ||
         user.lastMessage?.toLowerCase().includes(lowercasedQuery)
     )
     setFilteredUsers(filtered)
-  }, [searchQuery])
+  }, [searchQuery, listUsers])
 
   useEffect(() => {
     scrollToBottom()
@@ -150,14 +136,17 @@ export default function Messenger() {
       setNewMessage('')
       setAttachment(null)
       updateLastMessage(activeChat, newMessage.trim() || 'Sent an attachment')
+      if (currentUser?.id) {
+        sendMessage(currentUser.id, activeChat, newMessage.trim() || 'Sent an attachment')
+      }
     }
   }
 
   const updateLastMessage = (userId: string, content: string) => {
-    const updatedUsers = users.map((user) =>
+    const updatedUsers = listUsers.map((user) =>
       user.id === userId ? { ...user, lastMessage: content, timestamp: 'Just now' } : user
     )
-    setFilteredUsers(updatedUsers)
+    setListUsers(updatedUsers)
   }
 
   const scrollToBottom = () => {
@@ -176,53 +165,70 @@ export default function Messenger() {
       fileInputRef.current.value = ''
     }
   }
-  const handleVideoCall = () => {
-    setIsVideoCallOpen(true)
-  }
 
-  const handleVoiceCall = () => {
-    setIsVoiceCallOpen(true)
+  const handleLogout = async () => {
+    try {
+      console.log('currentUser', currentUser)
+      await authService.logout(currentUser?.email || 'no email', dispatch)
+      toast({
+        variant: 'default',
+        title: 'Logout Success',
+        description: 'You are now logged out'
+      })
+      navigate('/')
+    } catch (error) {
+      console.error('Logout failed:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Logout Failed',
+        description: 'An error occurred during logout'
+      })
+    }
   }
-  const handleLogout = () => {
-    dispatch(logout())
+  const setActiveChatId = async (userId: string) => {
+    try {
+      console.log('userId-activeChat', userId)
+      setActiveChat(userId)
+      const messages = await messageService.getChatMessages(currentUser?.id || '', userId)
+      // setMessages((prev) => ({
+      //   ...prev,
+      //   [userId]: messages
+      // }))
+      // Set isMe to true for the messages
+      const updatedMessages = messages.map((message) => ({
+        ...message,
+        isMe: message.senderId === currentUser?.id
+      }))
+      // Format timestamp
+      const formattedMessages = updatedMessages.map((message) => ({
+        ...message,
+        timestamp: new Date(message.timestamp).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      }))
+      setMessages((prev) => ({
+        ...prev,
+        [userId]: formattedMessages
+      }))
+    } catch (error) {
+      console.error('Failed to fetch chat messages:', error)
+    }
+
+    console.log('userId', userId)
+    // Initialize empty message array if it doesn't exist
+    setMessages((prev) => ({
+      ...prev,
+      [userId]: prev[userId] || []
+    }))
+  }
+  const handleGroupCall = () => {
+    setIsGroupCallOpen(!isGroupCallOpen)
   }
   return (
-    <div className="flex h-full w-full mx-auto border rounded-lg overflow-hidden">
+    <div className="flex h-full w-full mx-auto border rounded-lg overflow-hidden relative">
       {/* Sidebar for logged in users */}
-      <div className="w-15 border-r bg-muted/10 flex flex-col justify-between">
-        {/* User profile */}
-        <div className="p-4 border-b">
-          <div className="flex items-center justify-center">
-            <Avatar className="h-10 w-10 bg-slate-300">
-              <AvatarImage src="/placeholder.svg?height=48&width=48" alt="User" />
-              <AvatarFallback>U</AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-
-        {/* Action buttons at bottom */}
-        <div className="mt-auto">
-          <div className="p-4 flex flex-col gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-full hover:bg-slate-200"
-              aria-label="Settings"
-            >
-              <Settings className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-full hover:bg-slate-200 text-red-500 hover:text-red-600"
-              aria-label="Logout"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      <Layout />
       {/* Sidebar */}
       <div className="w-80 border-r bg-muted/10">
         <div className="p-4 border-b">
@@ -240,15 +246,15 @@ export default function Messenger() {
           {filteredUsers.map((user) => (
             <button
               key={user.id}
-              onClick={() => setActiveChat(user.id)}
+              onClick={() => setActiveChatId(user.id)}
               className={`w-full flex items-center gap-3 p-3 hover:bg-slate-100 transition-colors ${
                 activeChat === user.id ? 'bg-slate-100' : ''
               }`}
             >
               <div className="relative">
                 <Avatar className="bg-slate-300">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback>{user.name[0]}</AvatarFallback>
+                  <AvatarImage src={user.avatar} alt={user.username} />
+                  <AvatarFallback>{user.username[0]}</AvatarFallback>
                 </Avatar>
                 {user.online && (
                   <span className="absolute bottom-0 right-0 w-3 h-3 border-2 border-background bg-green-500 rounded-full" />
@@ -256,8 +262,10 @@ export default function Messenger() {
               </div>
               <div className="flex-1 text-left">
                 <div className="flex justify-between">
-                  <span className="font-medium">{user.name}</span>
-                  <span className="text-xs text-muted-foreground">{user.timestamp}</span>
+                  <span className="font-medium">{user.username}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {calculateTimeAgo(user.timeStamp || '')}
+                  </span>
                 </div>
                 {user.lastMessage && (
                   <p className="text-sm text-muted-foreground truncate">{user.lastMessage}</p>
@@ -275,21 +283,27 @@ export default function Messenger() {
             <div className="flex items-center gap-3">
               <Avatar className="bg-slate-300">
                 <AvatarImage
-                  src={users.find((u) => u.id === activeChat)?.avatar}
-                  alt={users.find((u) => u.id === activeChat)?.name}
+                  src={listUsers.find((u) => u.id === activeChat)?.avatar}
+                  alt={listUsers.find((u) => u.id === activeChat)?.username}
                 />
-                <AvatarFallback>{users.find((u) => u.id === activeChat)?.name[0]}</AvatarFallback>
+                <AvatarFallback>
+                  {listUsers.find((u) => u.id === activeChat)?.username[0]}
+                </AvatarFallback>
               </Avatar>
               <div>
-                <div className="font-medium">{users.find((u) => u.id === activeChat)?.name}</div>
-                <div className="text-xs text-slate-500">Active now</div>
+                <div className="font-medium">
+                  {listUsers.find((u) => u.id === activeChat)?.username}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {listUsers.find((u) => u.id === activeChat)?.online ? 'Active now' : 'Offline'}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" aria-label="Phone call" onClick={handleVoiceCall}>
+              <Button variant="ghost" size="icon" aria-label="Phone call">
                 <Phone className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" aria-label="Video call" onClick={handleVideoCall}>
+              <Button variant="ghost" size="icon" aria-label="Video call">
                 <Video className="h-4 w-4" />
               </Button>
               <Button variant="ghost" size="icon" aria-label="More options">
@@ -303,35 +317,35 @@ export default function Messenger() {
               {messages[activeChat]?.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.isMe ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${message?.isMe ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
                     className={`max-w-[70%] rounded-2xl px-4 py-2 ${
                       message.isMe ? 'bg-slate-700 text-white' : 'bg-slate-100'
                     }`}
                   >
-                    <p>{message.content}</p>
-                    {message.attachment && (
+                    <p>{message?.content}</p>
+                    {message?.attachment && (
                       <div className="mt-2">
-                        {message.attachment.type.startsWith('image/') ? (
+                        {message?.attachment?.type?.startsWith('image/') ? (
                           <img
-                            src={message.attachment.url}
-                            alt={message.attachment.name}
+                            src={message?.attachment?.url}
+                            alt={message?.attachment?.name}
                             className="max-w-full rounded"
                           />
                         ) : (
                           <a
-                            href={message.attachment.url}
+                            href={message?.attachment?.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-500 underline"
                           >
-                            {message.attachment.name}
+                            {message?.attachment?.name}
                           </a>
                         )}
                       </div>
                     )}
-                    <span className="text-xs opacity-70">{message.timestamp}</span>
+                    <span className="text-xs opacity-70">{message?.timestamp}</span>
                   </div>
                 </div>
               ))}
@@ -357,13 +371,6 @@ export default function Messenger() {
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Type a message..."
-                  className="flex-1"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  aria-label="Type a message"
-                />
                 <input
                   type="file"
                   className="hidden"
@@ -380,6 +387,14 @@ export default function Messenger() {
                 >
                   <Paperclip className="h-4 w-4" />
                 </Button>
+                <Input
+                  placeholder="Type a message..."
+                  className="flex-1"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  aria-label="Type a message"
+                />
+
                 <Button
                   type="submit"
                   size="icon"
@@ -400,25 +415,12 @@ export default function Messenger() {
           </div>
         </div>
       )}
-      {activeChat && (
-        <>
-          <VideoCallModal
-            isOpen={isVideoCallOpen}
-            onClose={() => setIsVideoCallOpen(false)}
-            callee={{
-              name: users.find((u) => u.id === activeChat)?.name || '',
-              avatar: users.find((u) => u.id === activeChat)?.avatar || ''
-            }}
-          />
-          <VoiceCallModal
-            isOpen={isVoiceCallOpen}
-            onClose={() => setIsVoiceCallOpen(false)}
-            callee={{
-              name: users.find((u) => u.id === activeChat)?.name || '',
-              avatar: users.find((u) => u.id === activeChat)?.avatar || ''
-            }}
-          />
-        </>
+      {isGroupCallOpen && (
+        <RoomJoinModal
+          isOpen={isGroupCallOpen}
+          setIsOpen={setIsGroupCallOpen}
+          setRoomId={setRoomId}
+        />
       )}
     </div>
   )

@@ -18,7 +18,12 @@ export default defineConfig({
   preload: {
     plugins: [externalizeDepsPlugin()]
   },
+
   renderer: {
+    server: {
+      host: true, // Mở rộng server để có thể truy cập từ các thiết bị khác trong mạng
+      port: 5173 // Cổng mặc định
+    },
     assetsInclude: ['src/renderer/  **'],
     resolve: {
       alias: {

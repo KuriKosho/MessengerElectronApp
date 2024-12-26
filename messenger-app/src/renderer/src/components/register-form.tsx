@@ -1,15 +1,20 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import authService from '@renderer/services/authService'
 import { useState } from 'react'
+import { useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
+import { toast } from './ui/use-toast'
 
 export default function RegisterForm() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (password !== confirmPassword) {
       alert("Passwords don't match")
@@ -17,6 +22,22 @@ export default function RegisterForm() {
     }
     // Here you would typically handle the registration logic
     console.log('Registration attempt', { name, email, password })
+    try {
+      const response = await authService.register(name, email, password, confirmPassword, dispatch)
+      toast({
+        variant: 'default',
+        title: 'Register Success',
+        description: 'You are now registered'
+      })
+      navigate('/chat')
+    } catch (error) {
+      console.error('Register failed:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Register Failed',
+        description: 'An error occurred during registration'
+      })
+    }
   }
 
   return (
