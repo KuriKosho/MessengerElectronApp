@@ -134,29 +134,33 @@ import { Game } from './game-page'
 export const recentGames: Game[] = [
   {
     id: '1',
-    title: 'Recent Game 1',
-    imageUrl: '/placeholder.svg?height=100&width=200',
+    title: '2048',
+    imageUrl:
+      'https://lh3.googleusercontent.com/ZV0IXSCwUofCS6RabwNJ_yp4vwcxEenGYwscnbWtESd-6xt7JYRc6-PpWJAXUtbhJC74SCDt6970NS1ftvHTeC47XGE=s1280-w1280-h800',
     link: '#',
-    embedUrl: 'https://example.com/embed/game1'
+    embedUrl: 'https://play2048.co/'
   },
   {
     id: '2',
-    title: 'Recent Game 2',
-    imageUrl: '/placeholder.svg?height=100&width=200',
+    title: 'Tetris',
+    imageUrl:
+      'https://play-lh.googleusercontent.com/gELFf6cqNm0gnW3gy3bV0rFS2bVOPiJCicSX7epCbOTkuCbZ1cMBUOFijq85DHTwZg=w526-h296-rw',
     link: '#',
-    embedUrl: 'https://example.com/embed/game2'
+    embedUrl: 'https://tetris.com/play-tetris'
   },
   {
     id: '3',
-    title: 'Recent Game 3',
-    imageUrl: '/placeholder.svg?height=100&width=200',
+    title: 'Pacman',
+    imageUrl:
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQp0n7vfSP7h3k69dg-Q5mr1v57Uv4XtwWYlw&s',
     link: '#',
-    embedUrl: 'https://example.com/embed/game3'
+    embedUrl: 'https://www.google.com/logos/2010/pacman10-i.html'
   },
   {
     id: '4',
-    title: 'Recent Game 4',
-    imageUrl: '/placeholder.svg?height=100&width=200',
+    title: 'Snake',
+    imageUrl:
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTsR2zQKHQ_HosECFokoc75SfbX2qPj8whlMg&s',
     link: '#',
     embedUrl: 'https://example.com/embed/game4'
   }
