@@ -4,3 +4,5 @@ Documents
 out
 .DS_Store
 *.log*
+messenger-app/yarn.lock
+package-lock.json
